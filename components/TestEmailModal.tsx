@@ -84,7 +84,7 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
     }
     
     // Check if all required template variables are filled
-    const missingFields = [];
+    const missingFields: string[] = [];
     template.variables.forEach(variable => {
       const value = data.variables[variable];
       if (!value || value.trim() === '') {
