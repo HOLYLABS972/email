@@ -14,6 +14,13 @@ interface Project {
   createdAt: Date;
   updatedAt: Date;
   status: 'active' | 'inactive';
+  smtpConfig?: {
+    host: string;
+    port: number;
+    secure: boolean;
+    username: string;
+    password: string;
+  };
 }
 
 interface Template {
@@ -34,8 +41,9 @@ interface ProjectContextType {
   currentProject: Project | null;
   templates: Template[];
   loading: boolean;
-  createProject: (name: string, description: string, email: string) => Promise<string>;
+  createProject: (name: string, description: string) => Promise<string>;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
+  updateProjectSMTPConfig: (projectId: string, smtpConfig: any) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   setCurrentProject: (project: Project | null) => void;
   createTemplate: (template: Omit<Template, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
@@ -106,17 +114,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const createProject = async (name: string, description: string, email: string): Promise<string> => {
+  const createProject = async (name: string, description: string): Promise<string> => {
     if (!user) throw new Error('User not authenticated');
     
     try {
-      // Generate full email address with @theholylabs.com domain
-      const fullEmail = `${email}@theholylabs.com`;
+      // Generate email address from project name
+      const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const projectEmail = `${cleanName}@theholylabs.com`;
       
       const projectData = {
         name,
         description,
-        email: fullEmail,
+        email: projectEmail,
         userId: user.uid,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -357,6 +366,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await loadProjects(); // Reload projects
   };
 
+  const updateProjectSMTPConfig = async (projectId: string, smtpConfig: any) => {
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, {
+      smtpConfig: smtpConfig,
+      updatedAt: new Date(),
+    });
+    await loadProjects(); // Reload projects
+  };
+
   const deleteProject = async (id: string) => {
     await deleteDoc(doc(db, 'projects', id));
     await loadProjects(); // Reload projects
@@ -427,6 +445,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     loading,
     createProject,
     updateProject,
+    updateProjectSMTPConfig,
     deleteProject,
     setCurrentProject,
     createTemplate,

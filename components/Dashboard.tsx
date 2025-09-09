@@ -3,13 +3,12 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject } from '@/contexts/ProjectContext';
-import { Plus, Folder, LogOut, User, Network, Settings } from 'lucide-react';
+import { Plus, Folder, LogOut, User, Network } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import ProjectList from './ProjectList';
 import ProjectDetail from './ProjectDetail';
 import CreateProjectModal from './CreateProjectModal';
 import UpdateProfileModal from './UpdateProfileModal';
-import SMTPSettingsModal from './SMTPSettingsModal';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -17,7 +16,6 @@ export default function Dashboard() {
   const router = useRouter();
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showUpdateProfile, setShowUpdateProfile] = useState(false);
-  const [showSMTPSettings, setShowSMTPSettings] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -69,14 +67,6 @@ export default function Dashboard() {
                 <span>New Project</span>
               </button>
               
-              {/* SMTP Settings Button */}
-              <button
-                onClick={() => setShowSMTPSettings(true)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                title="SMTP Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
               
               {/* User Profile Area - Clickable for editing */}
               <div className="flex items-center space-x-2">
@@ -120,9 +110,6 @@ export default function Dashboard() {
         <UpdateProfileModal onClose={() => setShowUpdateProfile(false)} />
       )}
       
-      {showSMTPSettings && (
-        <SMTPSettingsModal onClose={() => setShowSMTPSettings(false)} />
-      )}
     </div>
   );
 }

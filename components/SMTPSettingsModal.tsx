@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, TestTube, Mail, Server, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Save, Mail, Server, Lock, User } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface SMTPSettings {
   host: string;
@@ -9,7 +11,6 @@ interface SMTPSettings {
   secure: boolean;
   username: string;
   password: string;
-  // fromEmail and fromName are auto-generated based on project name
 }
 
 interface SMTPSettingsModalProps {
@@ -17,6 +18,7 @@ interface SMTPSettingsModalProps {
 }
 
 export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
+  const { currentProject, updateProjectSMTPConfig } = useProject();
   const [settings, setSettings] = useState<SMTPSettings>({
     host: '',
     port: 587,
@@ -26,21 +28,28 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
   });
   
   const [loading, setLoading] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Load saved settings from localStorage
-    const savedSettings = localStorage.getItem('smtp-settings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(prev => ({ ...prev, ...parsed }));
-      } catch (error) {
-        console.error('Failed to load SMTP settings:', error);
-      }
+    if (currentProject) {
+      loadProjectSMTPConfig();
     }
-  }, []);
+  }, [currentProject]);
+
+  const loadProjectSMTPConfig = () => {
+    if (!currentProject) return;
+    
+    // Load SMTP config from project document
+    if (currentProject.smtpConfig) {
+      setSettings({
+        host: currentProject.smtpConfig.host || '',
+        port: currentProject.smtpConfig.port || 587,
+        secure: currentProject.smtpConfig.secure || false,
+        username: currentProject.smtpConfig.username || '',
+        password: currentProject.smtpConfig.password || ''
+      });
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -55,6 +64,12 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
     
     if (!settings.username.trim()) {
       newErrors.username = 'Username is required';
+    } else {
+      // Validate email format for username
+      const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+      if (!emailRegex.test(settings.username)) {
+        newErrors.username = 'Username must be a valid email address';
+      }
     }
     
     if (!settings.password.trim()) {
@@ -66,68 +81,41 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
   };
 
   const handleSave = async () => {
-    if (!validateForm()) {
+    if (!validateForm() || !currentProject) {
       return;
     }
 
     setLoading(true);
     try {
-      // Save to localStorage
-      localStorage.setItem('smtp-settings', JSON.stringify(settings));
+      // Save SMTP config to both project document and SMTP service
+      await updateProjectSMTPConfig(currentProject.id, settings);
       
-      setTestResult({ success: true, message: 'SMTP settings saved successfully!' });
+      // Also save to SMTP service collection
+      const response = await fetch(`/api/smtp-config/${currentProject.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save to SMTP service');
+      }
+
+      toast.success('SMTP settings saved successfully!');
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (error) {
       console.error('Error saving SMTP settings:', error);
-      setTestResult({ success: false, message: 'Failed to save settings' });
+      toast.error('Failed to save settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTest = async () => {
-    if (!validateForm()) {
-      return;
-    }
 
-    setLoading(true);
-    setTestResult(null);
-    
-    try {
-      // Test SMTP connection directly without project dependency
-      const testResponse = await fetch(`${process.env.NEXT_PUBLIC_SMTP_URL || 'https://smtp.theholylabs.com'}/api/test-smtp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...settings,
-          test_email: settings.username // Use the username as test email
-        }),
-      });
-
-      if (!testResponse.ok) {
-        throw new Error('SMTP test failed');
-      }
-
-      const testResult = await testResponse.json();
-      
-      setTestResult({
-        success: testResult.success,
-        message: testResult.message || (testResult.success ? 'SMTP connection test successful!' : 'SMTP connection test failed')
-      });
-    } catch (error) {
-      console.error('SMTP test error:', error);
-      setTestResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'SMTP connection test failed. Please check your settings.'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleInputChange = (field: keyof SMTPSettings, value: string | number | boolean) => {
     setSettings(prev => ({ ...prev, [field]: value }));
@@ -222,13 +210,13 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username *
+                  Email Address (Username) *
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   value={settings.username}
                   onChange={(e) => handleInputChange('username', e.target.value)}
-                  placeholder="your-email@gmail.com"
+                  placeholder="your-email@yourdomain.com"
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.username ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -236,6 +224,9 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
                 {errors.username && (
                   <p className="text-red-500 text-xs mt-1">{errors.username}</p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  This will be used as both the authentication username and the sender email address
+                </p>
               </div>
               
               <div>
@@ -258,38 +249,14 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
             </div>
           </div>
 
-
-          {/* Test Result */}
-          {testResult && (
-            <div className={`p-4 rounded-md flex items-center space-x-2 ${
-              testResult.success 
-                ? 'bg-green-50 text-green-800 border border-green-200' 
-                : 'bg-red-50 text-red-800 border border-red-200'
-            }`}>
-              {testResult.success ? (
-                <CheckCircle className="h-5 w-5" />
-              ) : (
-                <AlertCircle className="h-5 w-5" />
-              )}
-              <span className="text-sm font-medium">{testResult.message}</span>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-500">
-            Settings are saved locally in your browser
+            Settings are saved per project. Sender information is automatically generated from your project details.
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={handleTest}
-              disabled={loading}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2"
-            >
-              <TestTube className="h-4 w-4" />
-              <span>Test Connection</span>
-            </button>
+          <div className="flex justify-end">
             <button
               onClick={handleSave}
               disabled={loading}

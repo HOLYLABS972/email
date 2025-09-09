@@ -4,7 +4,13 @@ const SMTP_API_URL = process.env.NEXT_PUBLIC_SMTP_URL || 'https://smtp.theholyla
 
 export async function POST(request: NextRequest) {
   try {
-    const { to, subject, content, templateId, variables, type, projectId } = await request.json();
+    const { 
+      templateId, 
+      triggerRoute, 
+      to, 
+      variables = {}, 
+      projectId 
+    } = await request.json();
 
     // Validate required fields
     if (!to) {
@@ -33,7 +39,7 @@ export async function POST(request: NextRequest) {
     let result;
 
     if (templateId) {
-      // Send email using Firebase template via SMTP service
+      // Send email using template ID (most flexible method)
       try {
         const response = await fetch(`${SMTP_API_URL}/api/email/send`, {
           method: 'POST',
@@ -43,7 +49,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             template_id: templateId,
             to_email: to,
-            variables: variables || {},
+            variables: variables,
             project_id: projectId
           }),
         });
@@ -83,7 +89,7 @@ export async function POST(request: NextRequest) {
           throw new Error(errorMessage);
         }
 
-        console.log('Test email sent successfully using Firebase template:', {
+        console.log('Email sent successfully using template ID:', {
           to,
           templateId,
           variables,
@@ -94,63 +100,86 @@ export async function POST(request: NextRequest) {
         console.error('Error sending email via SMTP service:', error);
         throw error;
       }
-    } else {
-      // Send email with provided content via SMTP service
-      if (!content) {
-        return NextResponse.json(
-          { error: 'Missing required field: content (when templateId is not provided)' },
-          { status: 400 }
-        );
-      }
-
+    } else if (triggerRoute) {
+      // Send email using trigger route
       try {
-        const response = await fetch(`${SMTP_API_URL}/api/email/send`, {
+        const response = await fetch(`${SMTP_API_URL}/api/email/send-by-route`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            trigger_route: triggerRoute,
             to_email: to,
-            subject: subject || 'Test Email',
-            content: content,
-            variables: variables || {}
+            variables: variables,
+            project_id: projectId
           }),
         });
 
         if (!response.ok) {
-          throw new Error(`SMTP service error: ${response.status}`);
+          const errorText = await response.text();
+          let errorMessage = `SMTP service error: ${response.status}`;
+          
+          // Handle specific error cases
+          if (response.status === 500) {
+            if (errorText.includes('Username and Password not accepted')) {
+              errorMessage = 'SMTP authentication failed. Please check your SMTP credentials in the settings.';
+            } else if (errorText.includes('DatetimeWithNanoseconds')) {
+              errorMessage = 'Template data error. Please try again or contact support.';
+            } else {
+              errorMessage = 'SMTP service error. Please check your configuration.';
+            }
+          } else if (response.status === 502) {
+            errorMessage = 'SMTP service is unavailable. Please try again later.';
+          }
+          
+          throw new Error(errorMessage);
         }
 
         result = await response.json();
         
         if (!result.success) {
-          throw new Error(result.error || 'Failed to send email');
+          // Handle specific error messages from the SMTP service
+          let errorMessage = result.error || 'Failed to send email';
+          
+          if (result.error && result.error.includes('Username and Password not accepted')) {
+            errorMessage = 'SMTP authentication failed. Please check your SMTP credentials in the settings.';
+          } else if (result.error && result.error.includes('DatetimeWithNanoseconds')) {
+            errorMessage = 'Template data error. Please try again or contact support.';
+          }
+          
+          throw new Error(errorMessage);
         }
 
-        console.log('Test email sent successfully:', {
+        console.log('Email sent successfully using trigger route:', {
           to,
-          subject: subject || 'Test Email',
+          triggerRoute,
           variables,
-          type
+          templateName: result.template_name
         });
 
       } catch (error) {
         console.error('Error sending email via SMTP service:', error);
         throw error;
       }
+    } else {
+      return NextResponse.json(
+        { error: 'Either templateId or triggerRoute is required' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Test email sent successfully',
-      messageId: result.messageId || result.template_id || 'test-message-id',
+      message: 'Email sent successfully',
+      messageId: result.messageId || result.template_id || 'email-message-id',
       templateName: result.template_name
     });
 
   } catch (error) {
-    console.error('Error sending test email:', error);
+    console.error('Error sending email:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to send test email' },
+      { error: error instanceof Error ? error.message : 'Failed to send email' },
       { status: 500 }
     );
   }

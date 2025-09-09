@@ -163,6 +163,8 @@ export default function TemplateList() {
         <TestEmailModal
           template={testingTemplate}
           onClose={() => setTestingTemplate(null)}
+          projectId={currentProject?.id}
+          projectName={currentProject?.name}
         />
       )}
     </div>
