@@ -46,10 +46,10 @@ export default function ProxyDashboard() {
       const data: StatusResponse | ErrorResponse = await ProxyService.getStatus();
       
       if (data.success) {
-        setStatus(data);
+        setStatus(data as StatusResponse);
         setLastUpdated(new Date());
       } else {
-        setError(data.error || 'Failed to fetch status from Firebase');
+        setError((data as ErrorResponse).error || 'Failed to fetch status from Firebase');
       }
     } catch (err) {
       setError('Failed to connect to Firebase');
