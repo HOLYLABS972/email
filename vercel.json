@@ -17,6 +17,5 @@
     "NEXT_PUBLIC_SMTP_URL": "https://smtp.theholylabs.com"
   },
   "regions": ["iad1"],
-  "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
+  "framework": "nextjs"
 }
