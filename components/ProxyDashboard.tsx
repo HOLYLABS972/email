@@ -27,6 +27,11 @@ interface StatusResponse {
   devices: Device[];
 }
 
+interface ErrorResponse {
+  success: boolean;
+  error: string;
+}
+
 export default function ProxyDashboard() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +43,7 @@ export default function ProxyDashboard() {
       setLoading(true);
       setError(null);
       
-      const data = await ProxyService.getStatus();
+      const data: StatusResponse | ErrorResponse = await ProxyService.getStatus();
       
       if (data.success) {
         setStatus(data);
