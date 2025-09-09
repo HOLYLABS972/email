@@ -9,7 +9,8 @@ export async function POST(request: NextRequest) {
       triggerRoute, 
       to, 
       variables = {}, 
-      projectId 
+      projectId,
+      attachments = []
     } = await request.json();
 
     // Validate required fields
@@ -38,6 +39,29 @@ export async function POST(request: NextRequest) {
 
     let result;
 
+    // Fetch attachment content if attachments are provided
+    let attachmentData = [];
+    if (attachments && attachments.length > 0) {
+      try {
+        for (const attachmentId of attachments) {
+          const attachmentResponse = await fetch(`${request.nextUrl.origin}/api/attachments/${attachmentId}`);
+          if (attachmentResponse.ok) {
+            const attachmentResult = await attachmentResponse.json();
+            if (attachmentResult.success) {
+              attachmentData.push({
+                filename: attachmentResult.attachment.filename,
+                content_type: attachmentResult.attachment.content_type,
+                content: attachmentResult.attachment.content
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching attachments:', error);
+        // Continue without attachments if fetching fails
+      }
+    }
+
     if (templateId) {
       // Send email using template ID (most flexible method)
       try {
@@ -50,7 +74,8 @@ export async function POST(request: NextRequest) {
             template_id: templateId,
             to_email: to,
             variables: variables,
-            project_id: projectId
+            project_id: projectId,
+            attachments: attachmentData
           }),
         });
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const SMTP_API_URL = process.env.NEXT_PUBLIC_SMTP_URL || 'https://smtp.theholylabs.com';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 export async function GET(
   request: NextRequest,
@@ -16,25 +16,35 @@ export async function GET(
       );
     }
 
-    const response = await fetch(`${SMTP_API_URL}/api/smtp-config/${projectId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Get project data from Firebase
+    const projectRef = doc(db, 'projects', projectId);
+    const projectDoc = await getDoc(projectRef);
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return NextResponse.json({
-          success: false,
-          error: 'No SMTP configuration found for this project'
-        }, { status: 404 });
-      }
-      throw new Error(`SMTP service error: ${response.status}`);
+    if (!projectDoc.exists()) {
+      return NextResponse.json({
+        success: false,
+        error: 'Project not found'
+      }, { status: 404 });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const projectData = projectDoc.data();
+    const smtpConfig = projectData?.smtpConfig;
+
+    if (!smtpConfig) {
+      return NextResponse.json({
+        success: false,
+        error: 'No SMTP configuration found for this project'
+      }, { status: 404 });
+    }
+
+    // Remove sensitive data before sending
+    const safeConfig = { ...smtpConfig };
+    delete safeConfig.password;
+
+    return NextResponse.json({
+      success: true,
+      config: safeConfig
+    });
 
   } catch (error) {
     console.error('Error fetching SMTP config:', error);
@@ -60,30 +70,56 @@ export async function POST(
       );
     }
 
-    const response = await fetch(`${SMTP_API_URL}/api/smtp-config/${projectId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `SMTP service error: ${response.status}`;
-      
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        // Use default error message if parsing fails
-      }
-      
-      throw new Error(errorMessage);
+    // Validate required fields
+    const requiredFields = ['host', 'port', 'username', 'password'];
+    const missingFields = requiredFields.filter(field => !body[field]);
+    
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { status: 400 }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Get project data to get project name
+    const projectRef = doc(db, 'projects', projectId);
+    const projectDoc = await getDoc(projectRef);
+
+    if (!projectDoc.exists()) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    const projectData = projectDoc.data();
+    const projectName = projectData?.name || 'Email Service';
+
+    // Prepare SMTP config
+    const smtpConfig = {
+      host: body.host,
+      port: parseInt(body.port),
+      secure: Boolean(body.secure),
+      username: body.username,
+      password: body.password,
+      from_email: body.username, // Use username as from_email
+      from_name: projectName, // Use project name as from_name
+      updatedAt: new Date(),
+      projectId: projectId,
+      projectName: projectName,
+      service: 'smtp-service'
+    };
+
+    // Update project document with SMTP config
+    await updateDoc(projectRef, {
+      smtpConfig: smtpConfig,
+      updatedAt: new Date()
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'SMTP configuration saved successfully'
+    });
 
   } catch (error) {
     console.error('Error saving SMTP config:', error);

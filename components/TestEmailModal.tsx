@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { X, Mail, Send, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SMTPSettingsModal from './SMTPSettingsModal';
+import AttachmentUpload from './AttachmentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Template {
@@ -37,6 +38,7 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
   const [loading, setLoading] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [showSmtpSettings, setShowSmtpSettings] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
   
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<TestEmailFormData>({
     defaultValues: {
@@ -171,7 +173,8 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
             to: data.email,
             templateId: template.id,
             variables: enhancedVariables,
-            projectId: projectId
+            projectId: projectId,
+            attachments: attachments.map(att => att.id)
           }),
         });
 
@@ -391,6 +394,21 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
                     );
                   })}
                 </div>
+              </div>
+            )}
+            
+            {/* Attachment Upload */}
+            {projectId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Attachments (Optional)
+                </label>
+                <AttachmentUpload
+                  projectId={projectId}
+                  onAttachmentsChange={setAttachments}
+                  maxFiles={5}
+                  maxSize={10}
+                />
               </div>
             )}
 

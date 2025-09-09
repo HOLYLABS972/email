@@ -87,21 +87,8 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
 
     setLoading(true);
     try {
-      // Save SMTP config to both project document and SMTP service
+      // Save SMTP config directly to Firebase
       await updateProjectSMTPConfig(currentProject.id, settings);
-      
-      // Also save to SMTP service collection
-      const response = await fetch(`/api/smtp-config/${currentProject.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save to SMTP service');
-      }
 
       toast.success('SMTP settings saved successfully!');
       setTimeout(() => {
