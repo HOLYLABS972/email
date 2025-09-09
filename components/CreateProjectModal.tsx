@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 interface CreateProjectFormData {
   name: string;
   description: string;
+  email: string;
 }
 
 interface CreateProjectModalProps {
@@ -25,7 +26,7 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
     setLoading(true);
     try {
       console.log('Creating project:', data);
-      await createProject(data.name, data.description);
+      await createProject(data.name, data.description, data.email);
       toast.success('Project created successfully!');
       reset();
       onClose();
@@ -78,6 +79,35 @@ export default function CreateProjectModal({ onClose }: CreateProjectModalProps)
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Project Email
+            </label>
+            <div className="mt-1 flex rounded-md shadow-sm">
+              <input
+                {...register('email', { 
+                  required: 'Project email is required',
+                  pattern: {
+                    value: /^[a-zA-Z0-9]+$/,
+                    message: 'Email prefix can only contain letters and numbers'
+                  }
+                })}
+                type="text"
+                className="input-field rounded-r-none"
+                placeholder="mediagatetv"
+              />
+              <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                @theholylabs.com
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              This will be the email address used for sending emails from this project
+            </p>
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
             )}
           </div>
           

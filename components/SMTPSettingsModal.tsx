@@ -9,8 +9,7 @@ interface SMTPSettings {
   secure: boolean;
   username: string;
   password: string;
-  fromEmail: string;
-  fromName: string;
+  // fromEmail and fromName are auto-generated based on project name
 }
 
 interface SMTPSettingsModalProps {
@@ -23,9 +22,7 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
     port: 587,
     secure: false,
     username: '',
-    password: '',
-    fromEmail: '',
-    fromName: ''
+    password: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -64,16 +61,6 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
       newErrors.password = 'Password is required';
     }
     
-    if (!settings.fromEmail.trim()) {
-      newErrors.fromEmail = 'From email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settings.fromEmail)) {
-      newErrors.fromEmail = 'Invalid email format';
-    }
-    
-    if (!settings.fromName.trim()) {
-      newErrors.fromName = 'From name is required';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -88,14 +75,12 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
       // Save to localStorage
       localStorage.setItem('smtp-settings', JSON.stringify(settings));
       
-      // Here you would typically also save to your backend/database
-      // await api.saveSMTPSettings(settings);
-      
       setTestResult({ success: true, message: 'SMTP settings saved successfully!' });
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (error) {
+      console.error('Error saving SMTP settings:', error);
       setTestResult({ success: false, message: 'Failed to save settings' });
     } finally {
       setLoading(false);
@@ -111,22 +96,33 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
     setTestResult(null);
     
     try {
-      // Simulate SMTP test - in real implementation, you'd call your backend
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock test result - replace with actual SMTP test
-      const success = Math.random() > 0.3; // 70% success rate for demo
+      // Test SMTP connection directly without project dependency
+      const testResponse = await fetch(`${process.env.NEXT_PUBLIC_SMTP_URL || 'https://smtp.theholylabs.com'}/api/test-smtp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...settings,
+          test_email: settings.username // Use the username as test email
+        }),
+      });
+
+      if (!testResponse.ok) {
+        throw new Error('SMTP test failed');
+      }
+
+      const testResult = await testResponse.json();
       
       setTestResult({
-        success,
-        message: success 
-          ? 'SMTP connection test successful!' 
-          : 'SMTP connection test failed. Please check your settings.'
+        success: testResult.success,
+        message: testResult.message || (testResult.success ? 'SMTP connection test successful!' : 'SMTP connection test failed')
       });
     } catch (error) {
+      console.error('SMTP test error:', error);
       setTestResult({
         success: false,
-        message: 'SMTP connection test failed. Please check your settings.'
+        message: error instanceof Error ? error.message : 'SMTP connection test failed. Please check your settings.'
       });
     } finally {
       setLoading(false);
@@ -262,50 +258,6 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
             </div>
           </div>
 
-          {/* From Configuration */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <User className="h-5 w-5 mr-2" />
-              From Configuration
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  From Email *
-                </label>
-                <input
-                  type="email"
-                  value={settings.fromEmail}
-                  onChange={(e) => handleInputChange('fromEmail', e.target.value)}
-                  placeholder="noreply@yourcompany.com"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.fromEmail ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.fromEmail && (
-                  <p className="text-red-500 text-xs mt-1">{errors.fromEmail}</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  From Name *
-                </label>
-                <input
-                  type="text"
-                  value={settings.fromName}
-                  onChange={(e) => handleInputChange('fromName', e.target.value)}
-                  placeholder="Your Company Name"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.fromName ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.fromName && (
-                  <p className="text-red-500 text-xs mt-1">{errors.fromName}</p>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* Test Result */}
           {testResult && (

@@ -1,13 +1,17 @@
 'use client';
 
 import { useProject } from '@/contexts/ProjectContext';
-import { Mail, Bell, FileText, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
+import { Mail, Bell, FileText, MoreVertical, Edit, Trash2, Eye, Send } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import EditTemplateModal from './EditTemplateModal';
+import TestEmailModal from './TestEmailModal';
 
 export default function TemplateList() {
   const { templates, loading, currentProject, deleteTemplate } = useProject();
   const [showMenu, setShowMenu] = useState<string | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [testingTemplate, setTestingTemplate] = useState<any>(null);
 
   const getTemplateIcon = (type: string) => {
     switch (type) {
@@ -97,17 +101,17 @@ export default function TemplateList() {
                     <div className="py-1">
                       <button
                         onClick={() => {
-                          // TODO: Implement template preview
+                          setTestingTemplate(template);
                           setShowMenu(null);
                         }}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        <Eye className="h-4 w-4 mr-3" />
-                        Preview
+                        <Send className="h-4 w-4 mr-3" />
+                        Test Email
                       </button>
                       <button
                         onClick={() => {
-                          // TODO: Implement template edit
+                          setEditingTemplate(template);
                           setShowMenu(null);
                         }}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -145,6 +149,22 @@ export default function TemplateList() {
           </div>
         );
       })}
+      
+      {/* Edit Template Modal */}
+      {editingTemplate && (
+        <EditTemplateModal
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+        />
+      )}
+      
+      {/* Test Email Modal */}
+      {testingTemplate && (
+        <TestEmailModal
+          template={testingTemplate}
+          onClose={() => setTestingTemplate(null)}
+        />
+      )}
     </div>
   );
 }

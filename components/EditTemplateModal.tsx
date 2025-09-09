@@ -1,56 +1,65 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useProject } from '@/contexts/ProjectContext';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface CreateTemplateFormData {
+interface Template {
+  id: string;
+  projectId: string;
+  name: string;
+  type: 'email' | 'notification' | 'form';
+  subject?: string;
+  content: string;
+  variables: string[];
+  triggerRoute?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface EditTemplateFormData {
   name: string;
   subject?: string;
   content: string;
   variables: string;
 }
 
-interface CreateTemplateModalProps {
+interface EditTemplateModalProps {
+  template: Template;
   onClose: () => void;
 }
 
-export default function CreateTemplateModal({ onClose }: CreateTemplateModalProps) {
+export default function EditTemplateModal({ template, onClose }: EditTemplateModalProps) {
   const [loading, setLoading] = useState(false);
-  const { currentProject, createTemplate } = useProject();
+  const { updateTemplate } = useProject();
   
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateTemplateFormData>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<EditTemplateFormData>({
     defaultValues: {
-      variables: ''
+      name: template.name,
+      subject: template.subject || '',
+      content: template.content,
+      variables: template.variables.join(', ')
     }
   });
 
-  const onSubmit = async (data: CreateTemplateFormData) => {
-    if (!currentProject) {
-      toast.error('No project selected');
-      return;
-    }
-
+  const onSubmit = async (data: EditTemplateFormData) => {
     setLoading(true);
     try {
       const variables = data.variables ? data.variables.split(',').map(v => v.trim()).filter(v => v) : [];
       
-      await createTemplate({
-        projectId: currentProject.id,
+      await updateTemplate(template.id, {
         name: data.name,
-        type: 'email', // Default to email type
         subject: data.subject,
         content: data.content,
         variables,
       });
       
-      toast.success('Template created successfully!');
-      reset();
+      toast.success('Template updated successfully!');
       onClose();
     } catch (error) {
-      toast.error('Failed to create template');
+      toast.error('Failed to update template');
     } finally {
       setLoading(false);
     }
@@ -60,7 +69,7 @@ export default function CreateTemplateModal({ onClose }: CreateTemplateModalProp
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Create New Template</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Edit Template</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -85,17 +94,19 @@ export default function CreateTemplateModal({ onClose }: CreateTemplateModalProp
             )}
           </div>
           
-          <div>
-            <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
-              Email Subject
-            </label>
-            <input
-              {...register('subject')}
-              type="text"
-              className="input-field mt-1"
-              placeholder="Enter email subject"
-            />
-          </div>
+          {template.type === 'email' && (
+            <div>
+              <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
+                Email Subject
+              </label>
+              <input
+                {...register('subject')}
+                type="text"
+                className="input-field mt-1"
+                placeholder="Enter email subject"
+              />
+            </div>
+          )}
           
           <div>
             <label htmlFor="content" className="block text-sm font-medium text-gray-700">
@@ -141,7 +152,7 @@ export default function CreateTemplateModal({ onClose }: CreateTemplateModalProp
               className="btn-primary"
               disabled={loading}
             >
-              {loading ? 'Creating...' : 'Create Template'}
+              {loading ? 'Updating...' : 'Update Template'}
             </button>
           </div>
         </form>

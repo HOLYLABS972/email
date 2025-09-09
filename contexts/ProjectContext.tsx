@@ -9,6 +9,7 @@ interface Project {
   id: string;
   name: string;
   description: string;
+  email: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -33,7 +34,7 @@ interface ProjectContextType {
   currentProject: Project | null;
   templates: Template[];
   loading: boolean;
-  createProject: (name: string, description: string) => Promise<string>;
+  createProject: (name: string, description: string, email: string) => Promise<string>;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   setCurrentProject: (project: Project | null) => void;
@@ -105,13 +106,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const createProject = async (name: string, description: string): Promise<string> => {
+  const createProject = async (name: string, description: string, email: string): Promise<string> => {
     if (!user) throw new Error('User not authenticated');
     
     try {
+      // Generate full email address with @theholylabs.com domain
+      const fullEmail = `${email}@theholylabs.com`;
+      
       const projectData = {
         name,
         description,
+        email: fullEmail,
         userId: user.uid,
         createdAt: new Date(),
         updatedAt: new Date(),
