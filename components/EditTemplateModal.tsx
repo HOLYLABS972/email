@@ -5,6 +5,9 @@ import { useForm } from 'react-hook-form';
 import { useProject } from '@/contexts/ProjectContext';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import AttachmentUpload from './AttachmentUpload';
+import DraggableVariables from './DraggableVariables';
+import DraggableContentArea from './DraggableContentArea';
 
 interface Template {
   id: string;
@@ -15,6 +18,7 @@ interface Template {
   content: string;
   variables: string[];
   triggerRoute?: string;
+  attachments?: any[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,9 +37,61 @@ interface EditTemplateModalProps {
 
 export default function EditTemplateModal({ template, onClose }: EditTemplateModalProps) {
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>(template.attachments || []);
+  const [variables, setVariables] = useState<string[]>(template.variables || []);
   const { updateTemplate } = useProject();
   
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<EditTemplateFormData>({
+
+  // Fetch attachment details if attachments are stored as IDs
+  const fetchAttachmentDetails = async (attachmentIds: string[]) => {
+    if (!attachmentIds || attachmentIds.length === 0) return [];
+    
+    try {
+      const attachmentPromises = attachmentIds.map(async (id) => {
+        const response = await fetch(`/api/attachments/${id}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            return result.attachment;
+          }
+        }
+        return null;
+      });
+      
+      const attachmentDetails = await Promise.all(attachmentPromises);
+      return attachmentDetails.filter(att => att !== null);
+    } catch (error) {
+      console.error('Error fetching attachment details:', error);
+      return [];
+    }
+  };
+
+  // Load attachment details when component mounts
+  useEffect(() => {
+    const loadAttachments = async () => {
+      if (template.attachments && template.attachments.length > 0) {
+        // Check if attachments are stored as IDs (strings) or full objects
+        const firstAttachment = template.attachments[0];
+        if (typeof firstAttachment === 'string') {
+          // Attachments are stored as IDs, fetch details
+          const attachmentDetails = await fetchAttachmentDetails(template.attachments as string[]);
+          setAttachments(attachmentDetails);
+        } else {
+          // Attachments are already full objects
+          setAttachments(template.attachments);
+        }
+      }
+    };
+    
+    loadAttachments();
+  }, [template.attachments]);
+
+  // Update variables when template changes
+  useEffect(() => {
+    setVariables(template.variables || []);
+  }, [template.variables]);
+  
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<EditTemplateFormData>({
     defaultValues: {
       name: template.name,
       subject: template.subject || '',
@@ -47,13 +103,12 @@ export default function EditTemplateModal({ template, onClose }: EditTemplateMod
   const onSubmit = async (data: EditTemplateFormData) => {
     setLoading(true);
     try {
-      const variables = data.variables ? data.variables.split(',').map(v => v.trim()).filter(v => v) : [];
-      
       await updateTemplate(template.id, {
         name: data.name,
         subject: data.subject,
         content: data.content,
         variables,
+        attachments: attachments, // Include attachments
       });
       
       toast.success('Template updated successfully!');
@@ -108,34 +163,37 @@ export default function EditTemplateModal({ template, onClose }: EditTemplateMod
             </div>
           )}
           
-          <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700">
-              Template Content
-            </label>
-            <textarea
-              {...register('content', { required: 'Content is required' })}
-              rows={8}
-              className="input-field mt-1"
-              placeholder="Enter template content. Use {variable_name} for dynamic content."
-            />
-            {errors.content && (
-              <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
-            )}
-          </div>
+          {/* Draggable Variables */}
+          <DraggableVariables
+            variables={variables}
+            onVariablesChange={setVariables}
+            onVariableDrag={(variable) => {
+              // This will be handled by the content area
+            }}
+          />
           
+          {/* Draggable Content Area */}
+          <DraggableContentArea
+            value={watch('content') || ''}
+            onChange={(value) => setValue('content', value)}
+            placeholder="Enter template content. Drag variables from above or type {variable_name} manually."
+          />
+          {errors.content && (
+            <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
+          )}
+          
+          {/* Attachment Upload */}
           <div>
-            <label htmlFor="variables" className="block text-sm font-medium text-gray-700">
-              Variables (comma-separated)
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Attachments (Optional)
             </label>
-            <input
-              {...register('variables')}
-              type="text"
-              className="input-field mt-1"
-              placeholder="name, email, message (comma-separated)"
+            <AttachmentUpload
+              projectId={template.projectId}
+              onAttachmentsChange={setAttachments}
+              maxFiles={5}
+              maxSize={10}
+              initialAttachments={template.attachments || []}
             />
-            <p className="mt-1 text-sm text-gray-500">
-              List the variables used in your template content
-            </p>
           </div>
           
           <div className="flex justify-end space-x-3 pt-4">

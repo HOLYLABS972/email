@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateOTPCode } from '@/lib/api';
 
 const SMTP_API_URL = process.env.NEXT_PUBLIC_SMTP_URL || 'https://smtp.theholylabs.com';
 
@@ -63,6 +64,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (templateId) {
+      // Check if template requires OTP code and generate if needed
+      if (templateId && variables && 'otp_code' in variables && variables.otp_code === '{otp_code}') {
+        // Generate OTP code if placeholder is present
+        variables.otp_code = generateOTPCode();
+        console.log('Generated OTP code:', variables.otp_code);
+      }
+      
       // Send email using template ID (most flexible method)
       try {
         const response = await fetch(`${SMTP_API_URL}/api/email/send`, {

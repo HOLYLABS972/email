@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, X, File, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,21 +17,32 @@ interface AttachmentUploadProps {
   onAttachmentsChange: (attachments: Attachment[]) => void;
   maxFiles?: number;
   maxSize?: number; // in MB
+  initialAttachments?: Attachment[]; // Existing attachments to display
 }
 
 export default function AttachmentUpload({ 
   projectId, 
   onAttachmentsChange, 
   maxFiles = 5, 
-  maxSize = 10 
+  maxSize = 10,
+  initialAttachments = []
 }: AttachmentUploadProps) {
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update attachments when initialAttachments change
+  useEffect(() => {
+    setAttachments(initialAttachments);
+  }, [initialAttachments]);
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
+    await processFiles(Array.from(files));
+  };
+
+  const processFiles = async (files: File[]) => {
     // Validate file count
     if (attachments.length + files.length > maxFiles) {
       toast.error(`Maximum ${maxFiles} files allowed`);
@@ -39,7 +50,7 @@ export default function AttachmentUpload({
     }
 
     // Validate file sizes
-    const oversizedFiles = Array.from(files).filter(file => file.size > maxSize * 1024 * 1024);
+    const oversizedFiles = files.filter(file => file.size > maxSize * 1024 * 1024);
     if (oversizedFiles.length > 0) {
       toast.error(`Files must be smaller than ${maxSize}MB`);
       return;
@@ -51,7 +62,7 @@ export default function AttachmentUpload({
       const formData = new FormData();
       formData.append('projectId', projectId);
       
-      Array.from(files).forEach(file => {
+      files.forEach(file => {
         formData.append('files', file);
       });
 
@@ -84,6 +95,25 @@ export default function AttachmentUpload({
     onAttachmentsChange(newAttachments);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (uploading || attachments.length >= maxFiles) {
+      return;
+    }
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -94,7 +124,21 @@ export default function AttachmentUpload({
 
   return (
     <div className="space-y-4">
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+      <div 
+        className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors ${
+          uploading || attachments.length >= maxFiles 
+            ? 'opacity-50 cursor-not-allowed' 
+            : 'cursor-pointer'
+        }`}
+        onClick={() => {
+          if (uploading || attachments.length >= maxFiles) {
+            return;
+          }
+          fileInputRef.current?.click();
+        }}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -105,11 +149,7 @@ export default function AttachmentUpload({
           disabled={uploading}
         />
         
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || attachments.length >= maxFiles}
-          className="flex flex-col items-center space-y-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <div className="flex flex-col items-center space-y-2 text-gray-600 hover:text-gray-800">
           {uploading ? (
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           ) : (
@@ -121,12 +161,30 @@ export default function AttachmentUpload({
               : `Click to upload files (max ${maxFiles}, ${maxSize}MB each)`
             }
           </span>
-        </button>
+          {!uploading && attachments.length < maxFiles && (
+            <span className="text-xs text-gray-500">
+              Drag and drop files here or click to browse
+            </span>
+          )}
+        </div>
       </div>
 
       {attachments.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Attachments ({attachments.length})</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-700">Attachments ({attachments.length})</h4>
+            <button
+              onClick={() => {
+                if (confirm('Remove all attachments?')) {
+                  setAttachments([]);
+                  onAttachmentsChange([]);
+                }
+              }}
+              className="text-xs text-red-600 hover:text-red-800 hover:underline"
+            >
+              Remove All
+            </button>
+          </div>
           <div className="space-y-2">
             {attachments.map((attachment) => (
               <div
@@ -145,8 +203,13 @@ export default function AttachmentUpload({
                   </div>
                 </div>
                 <button
-                  onClick={() => removeAttachment(attachment.id)}
-                  className="text-red-500 hover:text-red-700 p-1"
+                  onClick={() => {
+                    if (confirm(`Remove ${attachment.filename}?`)) {
+                      removeAttachment(attachment.id);
+                    }
+                  }}
+                  className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                  title={`Remove ${attachment.filename}`}
                 >
                   <X className="h-4 w-4" />
                 </button>

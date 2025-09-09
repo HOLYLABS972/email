@@ -32,6 +32,7 @@ interface Template {
   content: string;
   variables: string[];
   triggerRoute?: string;
+  attachments?: any[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -153,7 +154,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         projectId,
         name: 'OTP Verification',
         type: 'email' as const,
-        subject: 'Your OTP Code - {{company_name}}',
+        subject: 'Your OTP Code - {company_name}',
         content: `
 <!DOCTYPE html>
 <html>
@@ -163,7 +164,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <title>OTP Verification</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
         .otp-code { background: #fff; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
         .otp-number { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px; }
@@ -177,11 +178,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         <p>Secure your account with this one-time password</p>
     </div>
     <div class="content">
-        <h2>Hello {{user_name}},</h2>
-        <p>You requested a one-time password (OTP) for your {{company_name}} account. Use the code below to complete your verification:</p>
+        <h2>Hello {user_name},</h2>
+        <p>You requested a one-time password (OTP) for your {company_name} account. Use the code below to complete your verification:</p>
         
         <div class="otp-code">
-            <div class="otp-number">{{otp_code}}</div>
+            <div class="otp-number">{otp_code}</div>
             <p><strong>This code expires in 10 minutes</strong></p>
         </div>
         
@@ -194,11 +195,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         
         <p>If you have any questions, please contact our support team.</p>
         
-        <p>Best regards,<br>{{company_name}} Team</p>
+        <p>Best regards,<br>{company_name} Team</p>
     </div>
     <div class="footer">
         <p>This is an automated message. Please do not reply to this email.</p>
-        <p>&copy; {{current_year}} {{company_name}}. All rights reserved.</p>
+        <p>&copy; {current_year} {company_name}. All rights reserved.</p>
     </div>
 </body>
 </html>`,
@@ -211,17 +212,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         projectId,
         name: 'Registration Notice',
         type: 'email' as const,
-        subject: 'Welcome to {{company_name}} - Account Created Successfully',
+        subject: 'Welcome to {company_name} - Account Created Successfully',
         content: `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to {{company_name}}</title>
+    <title>Welcome to {company_name}</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #4CAF50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
         .welcome-box { background: #fff; border-left: 4px solid #4CAF50; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
         .button { display: inline-block; background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 0; }
@@ -232,13 +233,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 </head>
 <body>
     <div class="header">
-        <h1>🎉 Welcome to {{company_name}}!</h1>
+        <h1>🎉 Welcome to {company_name}!</h1>
         <p>Your account has been successfully created</p>
     </div>
     <div class="content">
         <div class="welcome-box">
-            <h2>Hello {{user_name}},</h2>
-            <p>Congratulations! Your account has been successfully created with the email <strong>{{user_email}}</strong>.</p>
+            <h2>Hello {user_name},</h2>
+            <p>Congratulations! Your account has been successfully created with the email <strong>{user_email}</strong>.</p>
         </div>
         
         <h3>What's Next?</h3>
@@ -255,18 +256,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         
         <p><strong>Account Details:</strong></p>
         <ul>
-            <li><strong>Email:</strong> {{user_email}}</li>
-            <li><strong>Registration Date:</strong> {{registration_date}}</li>
+            <li><strong>Email:</strong> {user_email}</li>
+            <li><strong>Registration Date:</strong> {registration_date}</li>
             <li><strong>Account Status:</strong> Active</li>
         </ul>
         
         <p>If you have any questions or need assistance, our support team is here to help!</p>
         
-        <p>Welcome aboard!<br>{{company_name}} Team</p>
+        <p>Welcome aboard!<br>{company_name} Team</p>
     </div>
     <div class="footer">
         <p>This is an automated message. Please do not reply to this email.</p>
-        <p>&copy; {{current_year}} {{company_name}}. All rights reserved.</p>
+        <p>&copy; {current_year} {company_name}. All rights reserved.</p>
     </div>
 </body>
 </html>`,
@@ -279,7 +280,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         projectId,
         name: 'Change Password Template',
         type: 'email' as const,
-        subject: 'Password Changed Successfully - {{company_name}}',
+        subject: 'Password Changed Successfully - {company_name}',
         content: `
 <!DOCTYPE html>
 <html>
@@ -289,7 +290,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <title>Password Changed</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #FF6B6B 0%, #ee5a52 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #FF6B6B; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
         .alert-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; margin: 20px 0; border-radius: 8px; }
         .security-tips { background: #fff; border-left: 4px solid #FF6B6B; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
@@ -303,19 +304,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         <p>Your account security has been updated</p>
     </div>
     <div class="content">
-        <h2>Hello {{user_name}},</h2>
+        <h2>Hello {user_name},</h2>
         
         <div class="alert-box">
             <h3>⚠️ Important Security Notice</h3>
-            <p>Your password was successfully changed on <strong>{{change_date}}</strong> at <strong>{{change_time}}</strong>.</p>
+            <p>Your password was successfully changed on <strong>{change_date}</strong> at <strong>{change_time}</strong>.</p>
         </div>
         
         <p><strong>Account Details:</strong></p>
         <ul>
-            <li><strong>Email:</strong> {{user_email}}</li>
-            <li><strong>Change Date:</strong> {{change_date}}</li>
-            <li><strong>Change Time:</strong> {{change_time}}</li>
-            <li><strong>IP Address:</strong> {{ip_address}}</li>
+            <li><strong>Email:</strong> {user_email}</li>
+            <li><strong>Change Date:</strong> {change_date}</li>
+            <li><strong>Change Time:</strong> {change_time}</li>
+            <li><strong>IP Address:</strong> {ip_address}</li>
         </ul>
         
         <div class="security-tips">
@@ -331,11 +332,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         <p><strong>If you didn't make this change:</strong></p>
         <p>Please contact our support team immediately and change your password again. Your account security is our top priority.</p>
         
-        <p>Stay secure!<br>{{company_name}} Security Team</p>
+        <p>Stay secure!<br>{company_name} Security Team</p>
     </div>
     <div class="footer">
         <p>This is an automated security notification. Please do not reply to this email.</p>
-        <p>&copy; {{current_year}} {{company_name}}. All rights reserved.</p>
+        <p>&copy; {current_year} {company_name}. All rights reserved.</p>
     </div>
 </body>
 </html>`,

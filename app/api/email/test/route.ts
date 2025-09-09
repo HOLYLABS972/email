@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateOTPCode } from '@/lib/api';
 
 const SMTP_API_URL = process.env.NEXT_PUBLIC_SMTP_URL || 'https://smtp.theholylabs.com';
 
@@ -33,6 +34,13 @@ export async function POST(request: NextRequest) {
     let result;
 
     if (templateId) {
+      // Check if template requires OTP code and generate if needed
+      if (variables && 'otp_code' in variables && variables.otp_code === '{otp_code}') {
+        // Generate OTP code if placeholder is present
+        variables.otp_code = generateOTPCode();
+        console.log('Generated OTP code for test email:', variables.otp_code);
+      }
+      
       // Send email using Firebase template via SMTP service
       try {
         const response = await fetch(`${SMTP_API_URL}/api/email/send`, {

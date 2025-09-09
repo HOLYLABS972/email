@@ -5,6 +5,9 @@ import { useForm } from 'react-hook-form';
 import { useProject } from '@/contexts/ProjectContext';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import AttachmentUpload from './AttachmentUpload';
+import DraggableVariables from './DraggableVariables';
+import DraggableContentArea from './DraggableContentArea';
 
 interface CreateTemplateFormData {
   name: string;
@@ -19,9 +22,11 @@ interface CreateTemplateModalProps {
 
 export default function CreateTemplateModal({ onClose }: CreateTemplateModalProps) {
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [variables, setVariables] = useState<string[]>([]);
   const { currentProject, createTemplate } = useProject();
   
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateTemplateFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<CreateTemplateFormData>({
     defaultValues: {
       variables: ''
     }
@@ -35,8 +40,6 @@ export default function CreateTemplateModal({ onClose }: CreateTemplateModalProp
 
     setLoading(true);
     try {
-      const variables = data.variables ? data.variables.split(',').map(v => v.trim()).filter(v => v) : [];
-      
       await createTemplate({
         projectId: currentProject.id,
         name: data.name,
@@ -44,10 +47,13 @@ export default function CreateTemplateModal({ onClose }: CreateTemplateModalProp
         subject: data.subject,
         content: data.content,
         variables,
+        attachments: attachments, // Include attachments
       });
       
       toast.success('Template created successfully!');
       reset();
+      setVariables([]);
+      setAttachments([]);
       onClose();
     } catch (error) {
       toast.error('Failed to create template');
@@ -97,35 +103,39 @@ export default function CreateTemplateModal({ onClose }: CreateTemplateModalProp
             />
           </div>
           
-          <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700">
-              Template Content
-            </label>
-            <textarea
-              {...register('content', { required: 'Content is required' })}
-              rows={8}
-              className="input-field mt-1"
-              placeholder="Enter template content. Use {variable_name} for dynamic content."
-            />
-            {errors.content && (
-              <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
-            )}
-          </div>
+          {/* Draggable Variables */}
+          <DraggableVariables
+            variables={variables}
+            onVariablesChange={setVariables}
+            onVariableDrag={(variable) => {
+              // This will be handled by the content area
+            }}
+          />
           
-          <div>
-            <label htmlFor="variables" className="block text-sm font-medium text-gray-700">
-              Variables (comma-separated)
-            </label>
-            <input
-              {...register('variables')}
-              type="text"
-              className="input-field mt-1"
-              placeholder="name, email, message (comma-separated)"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              List the variables used in your template content
-            </p>
-          </div>
+          {/* Draggable Content Area */}
+          <DraggableContentArea
+            value={watch('content') || ''}
+            onChange={(value) => setValue('content', value)}
+            placeholder="Enter template content. Drag variables from above or type {variable_name} manually."
+          />
+          {errors.content && (
+            <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
+          )}
+          
+          {/* Attachment Upload */}
+          {currentProject && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Attachments (Optional)
+              </label>
+              <AttachmentUpload
+                projectId={currentProject.id}
+                onAttachmentsChange={setAttachments}
+                maxFiles={5}
+                maxSize={10}
+              />
+            </div>
+          )}
           
           <div className="flex justify-end space-x-3 pt-4">
             <button
