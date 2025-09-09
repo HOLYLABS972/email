@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Development files
+.env*.local
+.DS_Store
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+DEPLOYMENT.md
+
+# Docker
+Dockerfile
