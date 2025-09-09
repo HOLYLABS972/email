@@ -16,11 +16,6 @@
     "NEXT_PUBLIC_API_URL": "https://api.theholylabs.com",
     "NEXT_PUBLIC_SMTP_URL": "https://smtp.theholylabs.com"
   },
-  "functions": {
-    "app/**/*.tsx": {
-      "maxDuration": 30
-    }
-  },
   "regions": ["iad1"],
   "framework": "nextjs",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
