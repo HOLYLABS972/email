@@ -64,7 +64,7 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
       } else if (variable === 'user_email' || variable === 'recipient_email' || variable === 'to_email') {
         initialVariables[variable] = user?.email || 'test@example.com'; // Use Firebase user email
       } else if (variable === 'otp_code') {
-        initialVariables[variable] = generateOTPCode(); // Generate OTP code
+        initialVariables[variable] = ''; // Leave OTP field empty for user to fill
       } else if (variable === 'current_date') {
         initialVariables[variable] = new Date().toLocaleDateString();
       } else if (variable === 'current_time') {
@@ -79,6 +79,20 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
   const onSubmit = async (data: TestEmailFormData) => {
     if (!projectId) {
       toast.error('Project ID is required to send test emails');
+      return;
+    }
+    
+    // Check if all required template variables are filled
+    const missingFields = [];
+    template.variables.forEach(variable => {
+      const value = data.variables[variable];
+      if (!value || value.trim() === '') {
+        missingFields.push(variable);
+      }
+    });
+    
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
     
@@ -213,7 +227,7 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
       urlParams.append('template_id', template.id);
     }
     
-    // Add only essential variables as query parameters (company_name and current_year are handled by backend)
+    // Add essential variables as query parameters (company_name and current_year are handled by backend)
     const essentialVariables = ['user_name'];
     essentialVariables.forEach(key => {
       const value = watchedVariables?.[key];
@@ -221,6 +235,13 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
         urlParams.append(key, value);
       }
     });
+    
+    // Add OTP code to URL if user has typed something
+    const otpValue = watchedVariables?.otp_code;
+    if (otpValue && otpValue.trim()) {
+      urlParams.append('otp_code', otpValue);
+      console.log('Added OTP to URL:', otpValue);
+    }
     
     const queryString = urlParams.toString();
     const fullUrl = queryString ? `${baseUrl}/api/email/send?${queryString}` : `${baseUrl}/api/email/send`;
@@ -326,17 +347,23 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
                           {variable === 'user_name' ? 'User Name' : 
                            variable === 'otp_code' ? 'OTP Code' : 
                            variable}
+                          <span className="text-red-500 ml-1">*</span>
                         </label>
                         <input
-                          {...register(`variables.${variable}`)}
+                          {...register(`variables.${variable}`, { 
+                            required: `${variable === 'user_name' ? 'User Name' : variable === 'otp_code' ? 'OTP Code' : variable} is required` 
+                          })}
                           type="text"
-                          className="input-field mt-1"
+                          className={`input-field mt-1 ${errors.variables?.[variable] ? 'border-red-500' : ''}`}
                           placeholder={
                             variable === 'user_name' ? 'Enter user name' :
                             variable === 'otp_code' ? 'Enter OTP code' :
                             `Enter value for ${variable}`
                           }
                         />
+                        {errors.variables?.[variable] && (
+                          <p className="mt-1 text-sm text-red-600">{errors.variables[variable]?.message}</p>
+                        )}
                       </div>
                     );
                   })}
