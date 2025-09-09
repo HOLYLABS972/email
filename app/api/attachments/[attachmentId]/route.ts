@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +30,21 @@ export async function GET(
 
     const attachmentData = attachmentDoc.data();
 
+    // Get fresh download URL from Firebase Storage
+    let downloadURL = attachmentData.downloadURL;
+    if (attachmentData.storagePath) {
+      try {
+        const storageRef = ref(storage, attachmentData.storagePath);
+        downloadURL = await getDownloadURL(storageRef);
+      } catch (error) {
+        console.error('Error getting download URL:', error);
+        return NextResponse.json(
+          { error: 'File not found in storage' },
+          { status: 404 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       attachment: {
@@ -36,7 +52,7 @@ export async function GET(
         filename: attachmentData.filename,
         content_type: attachmentData.content_type,
         size: attachmentData.size,
-        content: attachmentData.content, // Base64 encoded content
+        downloadURL: downloadURL,
         projectId: attachmentData.projectId,
         uploadedAt: attachmentData.uploadedAt
       }

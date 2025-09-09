@@ -37,12 +37,20 @@ export default function AttachmentUpload({
   }, [initialAttachments]);
 
   const handleFileSelect = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    console.log('File selection triggered, files:', files);
+    if (!files || files.length === 0) {
+      console.log('No files selected or empty file list');
+      return;
+    }
 
+    console.log('Converting FileList to Array, count:', files.length);
     await processFiles(Array.from(files));
   };
 
   const processFiles = async (files: File[]) => {
+    console.log('Processing files:', files.length, 'files');
+    console.log('Files details:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    
     // Validate file count
     if (attachments.length + files.length > maxFiles) {
       toast.error(`Maximum ${maxFiles} files allowed`);
@@ -52,6 +60,7 @@ export default function AttachmentUpload({
     // Validate file sizes
     const oversizedFiles = files.filter(file => file.size > maxSize * 1024 * 1024);
     if (oversizedFiles.length > 0) {
+      console.log('Oversized files:', oversizedFiles.map(f => ({ name: f.name, size: f.size, maxSize: maxSize * 1024 * 1024 })));
       toast.error(`Files must be smaller than ${maxSize}MB`);
       return;
     }

@@ -49,11 +49,23 @@ export async function POST(request: NextRequest) {
           if (attachmentResponse.ok) {
             const attachmentResult = await attachmentResponse.json();
             if (attachmentResult.success) {
-              attachmentData.push({
-                filename: attachmentResult.attachment.filename,
-                content_type: attachmentResult.attachment.content_type,
-                content: attachmentResult.attachment.content
-              });
+              // Fetch file content from Storage URL
+              const fileResponse = await fetch(attachmentResult.attachment.downloadURL);
+              if (fileResponse.ok) {
+                const fileBuffer = await fileResponse.arrayBuffer();
+                const base64Content = Buffer.from(fileBuffer).toString('base64');
+                
+                attachmentData.push({
+                  id: attachmentResult.attachment.id,
+                  filename: attachmentResult.attachment.filename,
+                  content_type: attachmentResult.attachment.content_type,
+                  size: attachmentResult.attachment.size,
+                  content: base64Content,
+                  url: attachmentResult.attachment.downloadURL
+                });
+              } else {
+                console.error(`Failed to fetch file content for ${attachmentResult.attachment.filename}`);
+              }
             }
           }
         }

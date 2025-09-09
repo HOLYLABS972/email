@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,24 +27,39 @@ export async function POST(request: NextRequest) {
 
     for (const file of files) {
       try {
-        // Convert file to base64
-        const bytes = await file.arrayBuffer();
-        const base64 = Buffer.from(bytes).toString('base64');
-
-        // Create attachment metadata
+        // Create attachment ID
         const attachmentId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Upload file to Firebase Storage
+        const storageRef = ref(storage, `attachments/${projectId}/${attachmentId}`);
+        const fileBuffer = await file.arrayBuffer();
+        const fileUint8Array = new Uint8Array(fileBuffer);
+        
+        // Upload to Firebase Storage
+        const snapshot = await uploadBytes(storageRef, fileUint8Array, {
+          contentType: file.type,
+          customMetadata: {
+            originalName: file.name,
+            projectId: projectId
+          }
+        });
+
+        // Get download URL
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        // Create attachment metadata for Firestore
         const attachmentData = {
           id: attachmentId,
           filename: file.name,
           content_type: file.type,
           size: file.size,
-          content: base64,
           projectId: projectId,
           uploadedAt: new Date(),
-          url: `attachments/${projectId}/${attachmentId}` // Reference for future use
+          storagePath: `attachments/${projectId}/${attachmentId}`,
+          downloadURL: downloadURL
         };
 
-        // Save to Firestore
+        // Save metadata to Firestore
         const attachmentRef = doc(db, 'attachments', attachmentId);
         await setDoc(attachmentRef, attachmentData);
 
@@ -52,7 +68,7 @@ export async function POST(request: NextRequest) {
           filename: file.name,
           content_type: file.type,
           size: file.size,
-          url: attachmentData.url
+          url: downloadURL
         });
 
       } catch (error) {

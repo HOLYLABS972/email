@@ -17,6 +17,7 @@ interface Template {
   content: string;
   variables: string[];
   triggerRoute?: string;
+  attachments?: any[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +120,12 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
           smtpUrl.searchParams.set(key, value);
         });
 
+        // Add attachments if template has them
+        if (template.attachments && template.attachments.length > 0) {
+          const attachmentIds = template.attachments.map(att => att.id);
+          smtpUrl.searchParams.set('attachments', JSON.stringify(attachmentIds));
+        }
+
         const response = await fetch(smtpUrl.toString(), {
           method: 'GET',
           mode: 'no-cors',
@@ -161,6 +168,12 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
         Object.entries(enhancedVariables).forEach(([key, value]) => {
           smtpUrl.searchParams.set(key, value);
         });
+
+        // Add attachments if template has them
+        if (template.attachments && template.attachments.length > 0) {
+          const attachmentIds = template.attachments.map(att => att.id);
+          smtpUrl.searchParams.set('attachments', JSON.stringify(attachmentIds));
+        }
 
         const response = await fetch(smtpUrl.toString(), {
           method: 'GET',
@@ -405,6 +418,33 @@ export default function TestEmailModal({ template, onClose, projectId, projectNa
               />
             </div>
             
+            {/* Attachments Preview */}
+            {template.attachments && template.attachments.length > 0 && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Attachments ({template.attachments.length}):</h4>
+                <div className="space-y-2">
+                  {template.attachments.map((attachment, index) => (
+                    <div key={attachment.id || index} className="flex items-center space-x-3 p-2 bg-white rounded border">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {attachment.filename}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Unknown size'} • {attachment.content_type || 'Unknown type'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="flex justify-end space-x-3 pt-4">
               <button
