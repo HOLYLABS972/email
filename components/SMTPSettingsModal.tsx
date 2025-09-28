@@ -28,6 +28,7 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
   });
   
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -99,6 +100,54 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
       toast.error('Failed to save settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestSMTP = async () => {
+    if (!validateForm() || !currentProject) {
+      toast.error('Please fill in all required fields before testing');
+      return;
+    }
+
+    const testEmail = prompt('Enter your email address to receive a test email:');
+    if (!testEmail) return;
+
+    // Validate test email
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(testEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setTesting(true);
+    try {
+      // First save the current settings
+      await updateProjectSMTPConfig(currentProject.id, settings);
+      
+      // Then test the SMTP configuration
+      const response = await fetch(`/api/smtp-config/${currentProject.id}/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          testEmail: testEmail
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('SMTP test successful! Check your email for the test message.');
+      } else {
+        toast.error(`SMTP test failed: ${result.error}`);
+        console.error('SMTP test error:', result);
+      }
+    } catch (error) {
+      console.error('Error testing SMTP:', error);
+      toast.error('Failed to test SMTP configuration');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -214,6 +263,14 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
                 <p className="text-xs text-gray-500 mt-1">
                   This will be used as both the authentication username and the sender email address
                 </p>
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-xs text-blue-800 font-medium mb-1">💡 PrivateEmail Configuration:</p>
+                  <p className="text-xs text-blue-700">
+                    Host: <code className="bg-blue-100 px-1 rounded">mail.privateemail.com</code> | 
+                    Port: <code className="bg-blue-100 px-1 rounded">587</code> (TLS) or <code className="bg-blue-100 px-1 rounded">465</code> (SSL) | 
+                    Username: Your full email address
+                  </p>
+                </div>
               </div>
               
               <div>
@@ -243,7 +300,15 @@ export default function SMTPSettingsModal({ onClose }: SMTPSettingsModalProps) {
           <div className="text-sm text-gray-500">
             Settings are saved per project. Sender information is automatically generated from your project details.
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={handleTestSMTP}
+              disabled={testing || loading}
+              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center space-x-2"
+            >
+              <Mail className="h-4 w-4" />
+              <span>{testing ? 'Testing...' : 'Test SMTP'}</span>
+            </button>
             <button
               onClick={handleSave}
               disabled={loading}
